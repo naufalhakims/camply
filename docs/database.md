@@ -143,8 +143,10 @@ function always checks capacity again. Organizers cannot lower capacity below cu
 confirmed seats.
 
 **Trip game access comes from confirmed bookings.** One room can be created for a published trip by
-its organizer (or an admin). A traveler can read and submit in that room only while a confirmed
-booking exists for the trip. Each traveler can submit one 500-character response. Room completion
+its organizer (or an admin). Only a traveler can participate, report, and read participant-visible
+responses, and only while a confirmed booking exists for the trip. An organizer can read and moderate
+the room for their own trip but cannot submit a response or report. Each traveler can submit one
+500-character response. Room completion
 is one-way and stops new responses while leaving visible responses readable.
 
 **Responses and reports remain anonymous to client queries.** Column-level `SELECT` grants exclude
@@ -159,7 +161,9 @@ inserts or status/price edits are denied. `reserve_trip_seats()` takes only trip
 derives traveler identity from `auth.uid()`, and reads price/capacity from the database. Travelers
 can release their own pending hold through `cancel_pending_booking()`. The current
 `complete_mock_payment()` function confirms an unexpired booking owned by the caller and writes a
-single mock receipt atomically. Repeating the request returns the existing receipt. This is a demo
+single mock receipt atomically. The reservation, cancellation, and payment functions reject any
+caller whose database role is not `traveler`. Repeating a successful traveler payment returns the
+existing receipt. This is a demo
 only: it does not verify or collect a real payment and must be replaced with provider verification.
 
 ## Where the authorization lives
@@ -180,9 +184,11 @@ only: it does not verify or collect a real payment and must be replaced with pro
 | Every user has a profile | `on_auth_user_created` trigger (`SECURITY DEFINER`) |
 | Travelers read only their bookings | RLS `SELECT` policy on `bookings` |
 | Booking creation and price snapshots | `reserve_trip_seats()` (`SECURITY DEFINER`) |
+| Only travelers create/cancel/pay for bookings | role check in reservation, cancellation, and mock-payment RPCs |
 | Booking capacity | trip row lock + current reservation count in that function |
 | Booking cancel | `cancel_pending_booking()` checks `auth.uid()` and pending state |
 | Mock checkout | `complete_mock_payment()` checks owner and expiry, then writes a mock receipt atomically |
+| Only travelers participate in trip game | `trip_game_is_member()` and `submit_trip_game_response()` role checks |
 | Payment receipt privacy | RLS allows only the booking's traveler to read it; clients cannot insert or update receipts |
 | Public remaining seats | `get_trip_seats_remaining()` (read-only display hint) |
 

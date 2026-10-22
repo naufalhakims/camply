@@ -18,13 +18,14 @@ The React app uses client-side routes, so each screen has a shareable URL:
 | Path | Screen | Access |
 | --- | --- | --- |
 | `/` | Trip discovery and landing page | Public |
-| `/trips/:slug` | Trip details and booking | Public; booking requires sign-in |
-| `/bookings` | Traveler booking history | Signed-in user |
+| `/login` | Sign-in and account creation | Public |
+| `/trips/:slug` | Trip details and booking | Public; booking is for signed-in travelers only |
+| `/bookings` | Traveler booking history | Traveler |
 | `/organizer` | Trip, participant, and game-room management | Organizer or admin |
 | `/organizer/bookings` | Full participant booking list | Organizer or admin |
 | `/profile` | Profile settings | Signed-in user |
 | `/admin` | Operational overview | Admin |
-| `/trip-game/:roomId` | Trip story room | Eligible participant or trip organizer |
+| `/trip-game/:roomId` | Trip story room | Confirmed traveler participant; organizer/admin can moderate |
 
 These are browser page routes, not a separate application server. The frontend uses the Supabase
 client API, database functions, and the `sign-cloudinary-upload` Edge Function for backend work.
@@ -82,7 +83,9 @@ traveler profile editing; explicit traveler/organizer/admin roles with database-
 and participant booking visibility with Cloudinary cover uploads; an admin operations summary; published trip discovery with destination,
 start-date and maximum-price filters; trip details; booking history; and an anonymous prompt room for
 confirmed trip participants with organizer moderation and reporting.
-Reservations are created through a database function that snapshots price and serializes capacity checks.
+Only traveler accounts can create/cancel bookings, make the mock payment, or submit/report game responses.
+Organizers can still create game rooms and moderate responses for trips they own. Reservations are created
+through a database function that snapshots price and serializes capacity checks.
 Each booking can contain multiple seats, holds seats for 15 minutes, and starts as `pending_payment`.
 
 Database migrations for `profiles`, `trips`, `bookings`, and `payments` enforce row ownership with RLS
@@ -91,6 +94,9 @@ authorization suite is in `supabase/tests/rls.test.sql`.
 
 The trip game schema and 22-assertion authorization suite are in
 `supabase/migrations/20261022000008_trip_game.sql` and `supabase/tests/trip_game.test.sql`.
+Role restrictions for booking, mock payment, and game participation are in
+`supabase/migrations/20261022000009_traveler_only_actions.sql`, with regression cases in
+`supabase/tests/traveler_only_actions.test.sql`.
 
 The checkout currently uses a clearly labeled mock payment. It records a demo receipt and confirms the
 booking atomically, but does not collect or transfer money. Replace this flow with a provider-verified

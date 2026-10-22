@@ -94,6 +94,7 @@ export default function TripGamePage({ roomId, role, onBack }: {
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const canModerate = role === 'organizer' || role === 'admin'
+  const canParticipate = role === 'traveler'
 
   const applyRoomView = useCallback((view: GameRoomView) => {
     setError(view.error)
@@ -125,6 +126,7 @@ export default function TripGamePage({ roomId, role, onBack }: {
 
   async function submitResponse(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    if (!canParticipate) { setError('Hanya traveler yang dapat mengirim jawaban.'); return }
     if (!room || room.status !== 'open') return
     const body = String(new FormData(event.currentTarget).get('body') ?? '').trim()
     if (body.length < 1 || body.length > 500) {
@@ -150,6 +152,7 @@ export default function TripGamePage({ roomId, role, onBack }: {
 
   async function submitReport(event: FormEvent<HTMLFormElement>, responseId: string) {
     event.preventDefault()
+    if (!canParticipate) { setError('Hanya traveler yang dapat melaporkan jawaban.'); return }
     const reason = String(new FormData(event.currentTarget).get('reason') ?? '').trim()
     if (reason.length < 5 || reason.length > 400) {
       setError('Jelaskan laporan dalam 5–400 karakter.')
@@ -228,7 +231,8 @@ export default function TripGamePage({ roomId, role, onBack }: {
       {notice && <p className="game-feedback" role="status">{notice}</p>}
 
       {myResponseId && !responseById.has(myResponseId) && <p className="game-feedback">Jawabanmu sedang disembunyikan moderator.</p>}
-      {!myResponseId && room.status === 'open' && <form className="panel game-response-form" onSubmit={submitResponse}>
+      {!canParticipate && <p className="game-feedback">Hanya traveler dengan booking confirmed yang dapat mengirim jawaban.</p>}
+      {canParticipate && !myResponseId && room.status === 'open' && <form className="panel game-response-form" onSubmit={submitResponse}>
         <label htmlFor="game-response">JAWABAN ANONIM</label>
         <textarea id="game-response" name="body" minLength={1} maxLength={500} rows={4} required placeholder="Tulis satu jawaban singkat…" />
         <div className="game-form-footer"><small>Maksimal 500 karakter. Jawaban tidak dapat diubah setelah dikirim.</small><button className="primary-button" type="submit" disabled={busy}>{busy ? 'Mengirim…' : 'Kirim jawaban'}</button></div>
@@ -241,10 +245,10 @@ export default function TripGamePage({ roomId, role, onBack }: {
           <p>{response.body}</p>
           {response.moderation_status === 'hidden' && <span className="game-hidden-label">Disembunyikan dari peserta</span>}
           <div className="game-response-actions">
-            {myResponseId !== response.id && response.moderation_status === 'visible' && room.status === 'open' && <button className="text-button" disabled={busy} onClick={() => setReportingResponseId(reportingResponseId === response.id ? null : response.id)}>Laporkan</button>}
+            {canParticipate && myResponseId !== response.id && response.moderation_status === 'visible' && room.status === 'open' && <button className="text-button" disabled={busy} onClick={() => setReportingResponseId(reportingResponseId === response.id ? null : response.id)}>Laporkan</button>}
             {canModerate && <button className="text-button" disabled={busy} onClick={() => void setResponseVisibility(response, response.moderation_status === 'visible' ? 'hidden' : 'visible')}>{response.moderation_status === 'visible' ? 'Sembunyikan' : 'Tampilkan kembali'}</button>}
           </div>
-          {reportingResponseId === response.id && <form className="game-report-form" onSubmit={event => void submitReport(event, response.id)}><label htmlFor={`report-${response.id}`}>ALASAN LAPORAN</label><textarea id={`report-${response.id}`} name="reason" minLength={5} maxLength={400} rows={3} required placeholder="Jelaskan apa yang perlu ditinjau…" /><button className="outline-button" type="submit" disabled={busy}>{busy ? 'Mengirim…' : 'Kirim laporan'}</button></form>}
+          {canParticipate && reportingResponseId === response.id && <form className="game-report-form" onSubmit={event => void submitReport(event, response.id)}><label htmlFor={`report-${response.id}`}>ALASAN LAPORAN</label><textarea id={`report-${response.id}`} name="reason" minLength={5} maxLength={400} rows={3} required placeholder="Jelaskan apa yang perlu ditinjau…" /><button className="outline-button" type="submit" disabled={busy}>{busy ? 'Mengirim…' : 'Kirim laporan'}</button></form>}
         </article>)}</div> : <div className="empty-state">Belum ada jawaban. Jadilah yang pertama berbagi cerita.</div>}
       </section>
 

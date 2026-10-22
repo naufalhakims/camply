@@ -259,7 +259,7 @@ function App() {
   // Load protected route data on direct URL visits and browser back/forward navigation too.
   useEffect(() => {
     if (!user) return
-    if (page === 'bookings') void Promise.resolve().then(() => Promise.all([loadBookings(), loadTripGameRooms()]))
+    if (page === 'bookings' && profile?.role === 'traveler') void Promise.resolve().then(() => Promise.all([loadBookings(), loadTripGameRooms()]))
     if (page === 'organizer' && ['organizer', 'admin'].includes(profile?.role ?? '')) {
       void Promise.resolve().then(() => Promise.all([loadManagedTrips(), loadManagedBookings(), loadTripGameRooms()]))
     }
@@ -274,6 +274,10 @@ function App() {
     }
     if (tripSlug && !session) {
       navigate(`/login?next=${encodeURIComponent(`/trips/${encodeURIComponent(tripSlug)}`)}`, { replace: true })
+      return
+    }
+    if (page === 'bookings' && session && !loadingProfile && profile?.role !== 'traveler') {
+      navigate(profile?.role === 'organizer' ? '/organizer' : '/', { replace: true })
       return
     }
     if (!session && ['bookings', 'profile', 'trip-game'].includes(page)) {
@@ -449,6 +453,7 @@ function App() {
   async function reserveSeats() {
     if (!selectedTrip) return
     if (!session) { setAuthMode('signup'); setAuthOpen(true); return }
+    if (profile?.role !== 'traveler') { setError('Booking hanya tersedia untuk akun traveler.'); return }
     setBookingBusy(true)
     setError('')
     const { error: reservationError } = await supabase.rpc('reserve_trip_seats', {
@@ -470,12 +475,14 @@ function App() {
   }
 
   async function cancelBooking(bookingId: string) {
+    if (profile?.role !== 'traveler') { setError('Pengelolaan booking hanya tersedia untuk akun traveler.'); return }
     const { error: cancelError } = await supabase.rpc('cancel_pending_booking', { p_booking_id: bookingId })
     if (cancelError) setError('Booking tidak dapat dibatalkan. Mungkin masa penahanan sudah berakhir.')
     else { setNotice('Booking pending dibatalkan dan kursinya dilepas.'); await loadBookings() }
   }
 
   async function completeMockPayment(bookingId: string) {
+    if (profile?.role !== 'traveler') { setError('Pembayaran hanya tersedia untuk akun traveler.'); return }
     setPayingBookingId(bookingId)
     setError('')
     const { error: paymentError } = await supabase.rpc('complete_mock_payment', {
@@ -504,6 +511,7 @@ function App() {
   }
 
   async function openBookings() {
+    if (profile?.role !== 'traveler') return
     setPage('bookings')
   }
 
@@ -593,6 +601,8 @@ function App() {
       : selectedTrip
     ? <TripDetailsPage
         trip={selectedTrip}
+        canBook={profile?.role === 'traveler'}
+        bookingAccessLoading={!authReady || loadingProfile}
         remainingSeats={remainingSeats}
         quantity={quantity}
         busy={bookingBusy}
@@ -602,6 +612,8 @@ function App() {
       />
     : tripSlug
       ? <main className="content detail-page"><div className="empty-state">{loadingTrips || loadingTripBySlug ? 'Memuat detail trip…' : error || 'Trip tidak ditemukan atau belum diterbitkan.'}<button className="text-button" onClick={() => setPage('discover')}>Kembali ke semua trip</button></div></main>
+      : page === 'bookings' && session && profile?.role !== 'traveler'
+        ? <main className="content profile-page"><div className="empty-state">Riwayat booking hanya tersedia untuk akun traveler.</div></main>
       : page === 'bookings' && session
         ? <BookingsPage
             bookings={bookings}

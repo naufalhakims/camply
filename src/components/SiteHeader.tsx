@@ -27,7 +27,7 @@ export default function SiteHeader({ session, profile, loadingProfile, onOpenAut
           {loadingProfile ? <span className="role-label">Memuat akun…</span> : profile && <span className={`role-label role-${profile.role}`}>{profile.role}</span>}
           {['organizer', 'admin'].includes(profile?.role ?? '') && <button className="profile-link" onClick={onManageTrips}>Kelola trip</button>}
           {profile?.role === 'admin' && <button className="profile-link" onClick={onAdmin}>Admin</button>}
-          <button className="profile-link" onClick={onBookings}>Booking</button>
+          {profile?.role === 'traveler' && <button className="profile-link" onClick={onBookings}>Booking</button>}
           <button className="profile-link" onClick={onProfile}>{profile?.display_name ?? 'Akun'}</button>
           <button className="outline-button" onClick={onSignOut}>Keluar</button>
         </> : <>
