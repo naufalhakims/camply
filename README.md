@@ -1,15 +1,15 @@
 # Camply
 
-A full-stack adventure trip booking platform. Travelers discover trips, book them, and pay in a
-provider test environment; organizers manage their own trips; admins have operational tools.
+A full-stack adventure trip booking platform. Travelers discover trips, book them, and complete a
+mock payment; signed-in users can create and publish trips they own.
 
 Portfolio project. No real customers, payments, or production traffic.
 
 ## Stack
 
 React 19 + TypeScript, Vite 8, Tailwind CSS 4, Supabase (Auth, PostgreSQL, RLS, Edge Functions).
-Stripe test mode and Cloudinary are planned; provider and account availability still need to be checked
-before implementing payments or uploads.
+Real payment-provider integration and Cloudinary uploads are planned; the current mock payment does
+not collect or transfer money.
 
 ## Setup
 
@@ -39,15 +39,20 @@ service-role key behind that prefix.
 
 ## Status
 
-Implemented: Supabase email/password sign-up, sign-in and sign-out; traveler profile editing; published
-trip discovery with destination, start-date and maximum-price filters; trip details; and booking history.
+Implemented: Supabase email/password sign-up with traveler/organizer selection, sign-in and sign-out;
+traveler profile editing; explicit traveler/organizer/admin roles with database-enforced access; organizer trip creation, drafts, publishing
+and participant booking visibility; an admin operations summary; published trip discovery with destination,
+start-date and maximum-price filters; trip details; and booking history.
 Reservations are created through a database function that snapshots price and serializes capacity checks.
 Each booking can contain multiple seats, holds seats for 15 minutes, and starts as `pending_payment`.
 
-Database migrations for `profiles`, `trips`, and `bookings` enforce row ownership with RLS and restrict
-client writes with Postgres grants and trusted database functions. The 30-assertion SQL authorization suite is in
-`supabase/tests/rls.test.sql`.
+Database migrations for `profiles`, `trips`, `bookings`, and `payments` enforce row ownership with RLS
+and restrict client writes with Postgres grants and trusted database functions. The 51-assertion SQL
+authorization suite is in `supabase/tests/rls.test.sql`.
 
-Payment is still in progress, so `pending_payment` bookings cannot be paid or confirmed yet. Do not
-treat the UI or written SQL test suite as proof that remote RLS is applied; apply migrations to the
-Supabase project and run the database tests in an environment with Docker.
+The checkout currently uses a clearly labeled mock payment. It records a demo receipt and confirms the
+booking atomically, but does not collect or transfer money. Replace this flow with a provider-verified
+server-side integration before production. Apply pending migrations with `npx supabase db push --linked`
+and run the linked SQL suite with `npx supabase test db --linked`. If Docker is unavailable,
+`npx supabase db query --linked --file supabase/tests/rls.test.sql` runs the rollback-safe suite
+through the Supabase Management API.

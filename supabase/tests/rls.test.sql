@@ -42,7 +42,7 @@ $$;
 reset role;
 set local role postgres;
 
-select extensions.plan(30);
+select extensions.plan(51);
 
 -- ---------------------------------------------------------------------------
 -- Fixtures, created while still connected as the superuser.
@@ -58,9 +58,10 @@ values
    'authenticated', 'authenticated', 'alice@example.com', now(), '{}'::jsonb),
   ('22222222-2222-2222-2222-222222222222', '00000000-0000-0000-0000-000000000000',
    'authenticated', 'authenticated', 'bob@example.com', now(),
-   '{"display_name":"Bob From Metadata"}'::jsonb),
+   '{"display_name":"Bob From Metadata","signup_role":"organizer"}'::jsonb),
   ('33333333-3333-3333-3333-333333333333', '00000000-0000-0000-0000-000000000000',
-   'authenticated', 'authenticated', 'carol@example.com', now(), '{}'::jsonb);
+   'authenticated', 'authenticated', 'carol@example.com', now(),
+   '{"signup_role":"admin"}'::jsonb);
 
 -- ---------------------------------------------------------------------------
 -- 1-3. The on-signup trigger created one profile per user, with a usable name.
@@ -88,6 +89,24 @@ select extensions.is(
   'new users default to the traveler role'
 );
 
+select extensions.is(
+  (select role from public.profiles
+    where id = '22222222-2222-2222-2222-222222222222'),
+  'organizer',
+  'signup role selection creates an organizer profile'
+);
+
+select extensions.is(
+  (select role from public.profiles
+    where id = '33333333-3333-3333-3333-333333333333'),
+  'traveler',
+  'signup metadata cannot create an admin account'
+);
+
+-- Admin fixtures are assigned through a trusted database owner action.
+update public.profiles set role = 'admin'
+ where id = '33333333-3333-3333-3333-333333333333';
+
 -- Two trips owned by alice: one published (world-readable), one draft (private).
 insert into public.trips (id, organizer_id, slug, title, destination,
                           starts_at, ends_at, price, capacity, status)
@@ -109,6 +128,12 @@ values
 set local role authenticated;
 select set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111111', true);
 select set_config('request.jwt.claim.role', 'authenticated', true);
+
+select extensions.is(
+  (select public.current_app_role()),
+  'traveler',
+  'authenticated role helper returns only the current user role'
+);
 
 -- Guard: prove the impersonation actually took effect. Without this, a silently
 -- NULL auth.uid() would make the "cannot" assertions below pass vacuously.
@@ -225,11 +250,20 @@ set local role authenticated;
 select set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111111', true);
 select set_config('request.jwt.claim.role', 'authenticated', true);
 
+select extensions.throws_ok(
+  $$ insert into public.trips
+       (organizer_id, slug, title, destination, starts_at, ends_at, price, capacity)
+     values ('11111111-1111-1111-1111-111111111111', 'traveler-trip', 'Traveler Trip',
+             'Nowhere', now() + interval '10 days', now() + interval '12 days', 100.00, 4) $$,
+  '42501', null,
+  'traveler cannot create a trip even when claiming their own user id'
+);
+
 select extensions.is(
   (select count(*)::int from public.trips
     where id = 'aaaaaaaa-0000-0000-0000-000000000002'),
   1,
-  'organizer CAN read their own draft trip'
+  'owner can read their own draft trip'
 );
 
 -- 15. Bob cannot edit alice's trip. RLS filters her row out of his USING clause,
@@ -239,6 +273,12 @@ set local role postgres;
 set local role authenticated;
 select set_config('request.jwt.claim.sub', '22222222-2222-2222-2222-222222222222', true);
 select set_config('request.jwt.claim.role', 'authenticated', true);
+
+select extensions.is(
+  (select public.current_app_role()),
+  'organizer',
+  'signup role selection gives this user the organizer role'
+);
 
 select extensions.lives_ok(
   $$ update public.trips set title = 'Stolen', price = 1.00
@@ -301,11 +341,25 @@ insert into public.trips (id, organizer_id, slug, title, destination,
 values ('bbbbbbbb-0000-0000-0000-000000000001',
         '22222222-2222-2222-2222-222222222222',
         'bobs-trip', 'Bob''s Trip', 'Bali',
-        now() + interval '20 days', now() + interval '22 days', 500000.00, 6, 'draft');
+        now() + interval '20 days', now() + interval '22 days', 500000.00, 6, 'published');
+
+insert into public.bookings
+  (id, traveler_id, trip_id, quantity, total_amount, currency, status, expires_at)
+values
+  ('cccccccc-0000-0000-0000-000000000001',
+   '11111111-1111-1111-1111-111111111111',
+   'bbbbbbbb-0000-0000-0000-000000000001', 1, 500000.00, 'IDR', 'confirmed', now());
 
 set local role authenticated;
 select set_config('request.jwt.claim.sub', '22222222-2222-2222-2222-222222222222', true);
 select set_config('request.jwt.claim.role', 'authenticated', true);
+
+select extensions.is(
+  (select count(*)::int from public.bookings
+    where trip_id = 'bbbbbbbb-0000-0000-0000-000000000001'),
+  1,
+  'organizer can view bookings for trips that they own'
+);
 
 select extensions.throws_ok(
   $$ update public.trips
@@ -319,6 +373,14 @@ select extensions.throws_ok(
 -- ===========================================================================
 -- bookings: atomic capacity holds, price snapshots, and traveler privacy
 -- ===========================================================================
+
+-- Alice's tests above verified a default traveler cannot create a trip. Give
+-- this fixture organizer access now so the capacity-management checks exercise
+-- the organizer policy and the capacity trigger rather than being RLS-filtered.
+reset role;
+set local role postgres;
+update public.profiles set role = 'organizer'
+ where id = '11111111-1111-1111-1111-111111111111';
 
 -- Alice reserves two seats on her published Rinjani trip. Price/currency must
 -- be calculated from the database trip row, not client-supplied values.
@@ -344,6 +406,15 @@ select extensions.is(
   'new reservation starts pending payment'
 );
 
+select set_config(
+  'test.alice_booking_id',
+  (select id::text from public.bookings
+    where traveler_id = '11111111-1111-1111-1111-111111111111'
+      and trip_id = 'aaaaaaaa-0000-0000-0000-000000000001'
+      and status = 'pending_payment'),
+  true
+);
+
 -- Bob cannot see Alice's private booking, even though he can read the trip.
 reset role;
 set local role postgres;
@@ -353,9 +424,9 @@ select set_config('request.jwt.claim.role', 'authenticated', true);
 
 select extensions.is(
   (select count(*)::int from public.bookings
-    where traveler_id = '11111111-1111-1111-1111-111111111111'),
+    where id = current_setting('test.alice_booking_id')::uuid),
   0,
-  'traveler CANNOT read another traveler''s booking'
+  'organizer CANNOT read bookings for trips owned by another organizer'
 );
 
 select extensions.throws_ok(
@@ -363,6 +434,18 @@ select extensions.throws_ok(
       where traveler_id = '11111111-1111-1111-1111-111111111111' $$,
   '42501', null,
   'traveler cannot write booking/payment status directly'
+);
+
+select extensions.throws_ok(
+  $$ select public.complete_mock_payment(current_setting('test.alice_booking_id')::uuid) $$,
+  'P0001', 'Booking is not available',
+  'traveler CANNOT complete another traveler''s mock payment'
+);
+
+select extensions.throws_ok(
+  $$ update public.payments set status = 'succeeded' $$,
+  '42501', null,
+  'traveler cannot write payment status directly'
 );
 
 -- Reusing the same active booking slot fails, and an additional reservation
@@ -415,6 +498,15 @@ select extensions.is(
   'cancelling a hold releases its active booking slot'
 );
 
+select set_config(
+  'test.alice_booking_id',
+  (select id::text from public.bookings
+    where traveler_id = '11111111-1111-1111-1111-111111111111'
+      and trip_id = 'aaaaaaaa-0000-0000-0000-000000000001'
+      and status = 'pending_payment'),
+  true
+);
+
 -- Bob takes ten seats while Alice holds two. Alice cannot see Bob's booking
 -- row under RLS; the capacity trigger must nevertheless count it securely.
 reset role;
@@ -443,5 +535,118 @@ select extensions.throws_ok(
   'organizer cannot lower capacity below another traveler''s hidden booking'
 );
 
-select * from extensions.finish();
+select extensions.is(
+  (select provider from public.complete_mock_payment(
+    current_setting('test.alice_booking_id')::uuid)),
+  'mock',
+  'the mock checkout records a mock provider receipt'
+);
+
+select extensions.is(
+  (select status from public.bookings
+    where id = current_setting('test.alice_booking_id')::uuid),
+  'confirmed',
+  'successful mock payment confirms the owned pending booking'
+);
+
+select extensions.is(
+  (select amount from public.payments
+    where booking_id = current_setting('test.alice_booking_id')::uuid),
+  5000000.00::numeric,
+  'mock receipt snapshots the database booking amount'
+);
+
+select extensions.is(
+  (select provider || ':' || status from public.payments
+    where booking_id = current_setting('test.alice_booking_id')::uuid),
+  'mock:succeeded',
+  'mock payment receipt has explicit provider and success status'
+);
+
+select extensions.is(
+  (select id from public.complete_mock_payment(
+    current_setting('test.alice_booking_id')::uuid)),
+  (select id from public.payments
+    where booking_id = current_setting('test.alice_booking_id')::uuid),
+  'repeating a successful mock payment returns the same receipt'
+);
+
+reset role;
+set local role postgres;
+set local role authenticated;
+select set_config('request.jwt.claim.sub', '22222222-2222-2222-2222-222222222222', true);
+select set_config('request.jwt.claim.role', 'authenticated', true);
+
+select extensions.is(
+  (select count(*)::int from public.payments
+    where booking_id = current_setting('test.alice_booking_id')::uuid),
+  0,
+  'traveler CANNOT read another traveler''s payment receipt'
+);
+
+select extensions.lives_ok(
+  $$ insert into public.trips
+       (organizer_id, slug, title, destination, starts_at, ends_at,
+        price, currency, capacity, status)
+     values ('22222222-2222-2222-2222-222222222222', 'bob-new-trip',
+             'Bob New Trip', 'Bali', now() + interval '40 days',
+             now() + interval '42 days', 750000.00, 'IDR', 8, 'draft') $$,
+  'organizer can create a trip that they own'
+);
+
+select extensions.lives_ok(
+  $$ update public.trips set status = 'published' where slug = 'bob-new-trip' $$,
+  'trip owner can publish their own draft'
+);
+
+select extensions.is(
+  (select status from public.trips where slug = 'bob-new-trip'),
+  'published',
+  'published trip is available under its owner account'
+);
+
+-- An administrator can review all trips, booking states, and payment outcomes.
+reset role;
+set local role postgres;
+set local role authenticated;
+select set_config('request.jwt.claim.sub', '33333333-3333-3333-3333-333333333333', true);
+select set_config('request.jwt.claim.role', 'authenticated', true);
+
+select extensions.is(
+  (select count(*)::int from public.trips
+    where id in ('aaaaaaaa-0000-0000-0000-000000000001',
+                 'aaaaaaaa-0000-0000-0000-000000000002')
+       or slug = 'bob-new-trip'),
+  3,
+  'admin can review all trip records'
+);
+select extensions.is(
+  (select count(*)::int from public.bookings
+    where id = current_setting('test.alice_booking_id')::uuid),
+  1,
+  'admin can review all booking records'
+);
+select extensions.is(
+  (select count(*)::int from public.payments
+    where booking_id = current_setting('test.alice_booking_id')::uuid),
+  1,
+  'admin can review all payment records'
+);
+
+reset role;
+set local role postgres;
+set local role authenticated;
+select set_config('request.jwt.claim.sub', '22222222-2222-2222-2222-222222222222', true);
+select set_config('request.jwt.claim.role', 'authenticated', true);
+
+select extensions.throws_ok(
+  $$ insert into public.payments
+       (booking_id, provider, provider_reference, amount, currency, status)
+     values (current_setting('test.alice_booking_id')::uuid, 'mock', 'forged',
+             1.00, 'IDR', 'succeeded') $$,
+  '42501', null,
+  'traveler cannot insert a forged payment receipt'
+);
+
+select * from extensions.finish(true);
 rollback;

@@ -1,6 +1,6 @@
 # Database
 
-Two tables so far: `profiles` and `trips`. Migrations live in `supabase/migrations/`
+The schema includes `profiles`, `trips`, `bookings`, and demo-only `payments`. Migrations live in `supabase/migrations/`
 and are the source of truth — never edit the database by hand.
 
 ## ERD
@@ -15,7 +15,7 @@ profiles
     display_name  text  NOT NULL, 1..80
     avatar_url    text
     bio           text  ≤ 500
-    role          text  NOT NULL DEFAULT 'traveler'  CHECK (traveler | admin)
+    role          text  NOT NULL DEFAULT 'traveler'  CHECK (traveler | organizer | admin)
     created_at    timestamptz
     updated_at    timestamptz
     │
@@ -61,14 +61,24 @@ INDEX (traveler_id, created_at DESC)  -- booking history
 INDEX (trip_id, status, expires_at)   -- capacity calculation
 UNIQUE (traveler_id, trip_id) WHERE status IN (pending_payment, confirmed)
                                       -- one active booking per traveler/trip
+
+bookings 1:0..1 payments
+    booking_id         uuid UNIQUE → bookings(id)
+    provider           mock
+    provider_reference deterministic mock reference
+    amount / currency  copied from the booking price snapshot
+    status             succeeded
+    created_at
 ```
 
 ## Decisions and why
 
-**No `organizer` role.** `trips.organizer_id` already expresses "organizer". Making it a
-role would add a role-assignment problem and a second source of truth for the same fact.
-Any authenticated user who creates a trip owns it. `role` is therefore only
-`traveler | admin`.
+**Roles are explicit and protected.** At signup, a user may choose `traveler` or `organizer`.
+The database trigger accepts only the exact `organizer` value; missing, invalid, or `admin`
+metadata becomes `traveler`. After profile creation, the browser cannot change `profiles.role`.
+The browser receives the current user's role through `current_app_role()`. Admin assignment remains
+restricted to a trusted Supabase project owner. Organizers can manage their own trips and view their
+participants/bookings. Admins can review all trips, bookings, and payment outcomes.
 
 **`role` is protected by column grants, not RLS.** RLS decides *rows*; it cannot express
 "this column is not yours". The guard is:
@@ -80,10 +90,16 @@ grant update (display_name, avatar_url, bio) on public.profiles to authenticated
 
 Supabase grants `ALL` on new `public` tables to `anon`/`authenticated` by default, so the
 explicit `revoke` is what makes the narrower `grant` meaningful. Without it,
-`UPDATE profiles SET role = 'admin'` on your own row would succeed.
+`UPDATE profiles SET role = 'admin'` on your own row would succeed. The role getter only returns
+the caller's own role; RLS reads the protected value inside a pinned `SECURITY DEFINER` function.
 
 **`organizer_id` is not an updatable column.** A client cannot reassign trip ownership.
 Ownership transfer, if ever needed, must be a deliberate server-side operation.
+
+**Trip creation requires the organizer role.** The browser sends the current user's ID when creating
+a trip; the insert policy checks both `role IN ('organizer','admin')` and `organizer_id = auth.uid()`.
+RLS rejects traveler inserts and forged owners. The column has no `UPDATE` grant, so ownership cannot
+be reassigned.
 
 **Ownership changes are blocked on both sides.** The update policy carries `WITH CHECK`
 in addition to `USING`, so a row cannot be edited *into* someone else's ownership. The
@@ -114,8 +130,10 @@ confirmed seats.
 **Booking writes use narrow database functions.** Clients have `SELECT` only on `bookings`; direct
 inserts or status/price edits are denied. `reserve_trip_seats()` takes only trip ID and quantity,
 derives traveler identity from `auth.uid()`, and reads price/capacity from the database. Travelers
-can release their own pending hold through `cancel_pending_booking()`. Confirmed-booking cancellation
-and payment status transitions wait for the payment/refund milestone.
+can release their own pending hold through `cancel_pending_booking()`. The current
+`complete_mock_payment()` function confirms an unexpired booking owned by the caller and writes a
+single mock receipt atomically. Repeating the request returns the existing receipt. This is a demo
+only: it does not verify or collect a real payment and must be replaced with provider verification.
 
 ## Where the authorization lives
 
@@ -124,6 +142,10 @@ and payment status transitions wait for the payment/refund milestone.
 | Anyone reads published trips | RLS `SELECT` policy on `trips` |
 | Owner reads own drafts | second (permissive, OR'd) `SELECT` policy |
 | Only owner edits/deletes own trip | RLS `UPDATE`/`DELETE` policies |
+| Only organizers/admins create trips | role helper + `INSERT` ownership RLS policy |
+| Organizers manage only owned trips | role helper + ownership RLS policies |
+| Organizers view owned trip bookings/payments | related trip ownership policies |
+| Admins review all trips/bookings/payments | admin-only `SELECT`/trip management policies |
 | Can't create a trip owned by another | `WITH CHECK` on insert |
 | Can't reassign ownership | `organizer_id` absent from `UPDATE` grant |
 | Can't self-promote to admin | `role` absent from `UPDATE` grant |
@@ -133,20 +155,44 @@ and payment status transitions wait for the payment/refund milestone.
 | Booking creation and price snapshots | `reserve_trip_seats()` (`SECURITY DEFINER`) |
 | Booking capacity | trip row lock + current reservation count in that function |
 | Booking cancel | `cancel_pending_booking()` checks `auth.uid()` and pending state |
+| Mock checkout | `complete_mock_payment()` checks owner and expiry, then writes a mock receipt atomically |
+| Payment receipt privacy | RLS allows only the booking's traveler to read it; clients cannot insert or update receipts |
 | Public remaining seats | `get_trip_seats_remaining()` (read-only display hint) |
 
-Admin powers are **not yet implemented**. `role = 'admin'` exists in the constraint, but
-nothing grants admin capabilities — that needs its own deliberate policy pass.
+Only Admin assignment is restricted to the project owner. Organizer selection is part of signup;
+it is written by the database trigger and cannot be edited later. The owner can grant Admin in
+Supabase SQL Editor, for example:
+
+```sql
+update public.profiles
+set role = 'organizer'
+where id = (select id from auth.users where email = 'account@example.com');
+```
+
+Replace the email with the intended account. Never add a browser control that edits
+`profiles.role` after signup or place a service-role key in the frontend.
 
 ## Testing
 
 `supabase/tests/rls.test.sql` runs against the real policies and real grants, inside one
-transaction that rolls back. It covers profile/trip isolation, booking privacy, price snapshots,
-booking state, duplicate active reservations, capacity limits, and cancellation.
+transaction that rolls back. It covers default roles, traveler/organizer/admin boundaries, profile/trip
+isolation, booking/payment privacy, price snapshots, trip creation and publishing, mock payment ownership
+and idempotency, booking state, duplicate active reservations, capacity limits, and cancellation.
 
 ```powershell
 npm run test:db      # npx supabase test db
+npx supabase test db --linked
 ```
+
+The linked pgTAP runner uses Docker. If Docker is unavailable, the same SQL file can be submitted
+through the Supabase Management API without the container runner:
+
+```powershell
+npx supabase db query --linked --file supabase/tests/rls.test.sql
+```
+
+The suite ends with `finish(true)`, so this fallback returns an error if an assertion fails; all
+fixtures remain inside the test transaction and are rolled back.
 
 Two traps this suite guards against, both of which produce false passes:
 
