@@ -1,0 +1,11 @@
+import type { Booking, Trip } from '../types'
+import { formatMoney, formatDate } from '../lib/format'
+
+export default function AdminDashboardPage({ trips, bookings, onCancelTrip }: { trips: Trip[]; bookings: Booking[]; onCancelTrip: (id: string) => void }) {
+  return <main className="content profile-page admin-page">
+    <span className="eyebrow">ADMINISTRASI CAMPLY</span><h1>Ringkasan operasional</h1>
+    <div className="admin-metrics"><article className="panel"><span className="eyebrow">TRIP</span><strong>{trips.length}</strong></article><article className="panel"><span className="eyebrow">BOOKING</span><strong>{bookings.length}</strong></article><article className="panel"><span className="eyebrow">PEMBAYARAN TERCATAT</span><strong>{bookings.filter(booking => booking.payment).length}</strong></article></div>
+    <section className="managed-trips admin-records"><h2>Trip</h2>{trips.length ? trips.map(trip => <article className="panel managed-trip-row" key={trip.id}><div><span className={`status-pill status-${trip.status}`}>{trip.status}</span><h3>{trip.title}</h3><p>{trip.destination} · {formatDate(trip.starts_at)} – {formatDate(trip.ends_at)} · organizer {trip.organizer_id.slice(0, 8)}…</p><strong>{formatMoney(trip.price, trip.currency)} · kapasitas {trip.capacity}</strong></div>{trip.status !== 'cancelled' && <button className="text-button" onClick={() => onCancelTrip(trip.id)}>Batalkan trip</button>}</article>) : <div className="empty-state">Belum ada trip.</div>}</section>
+    <section className="managed-trips admin-records"><h2>Booking dan pembayaran</h2>{bookings.length ? bookings.map(booking => <article className="panel participant-row" key={booking.id}><div><span className="eyebrow">{booking.trip?.title ?? 'Trip'}</span><p>{booking.traveler?.display_name ?? `Traveler ${booking.traveler_id.slice(0, 8)}…`} · {booking.quantity} peserta</p></div><div className="booking-row-side"><span className={`status-pill status-${booking.status}`}>{booking.status.replace('_', ' ')}</span><strong>{formatMoney(booking.total_amount, booking.currency)}</strong><small>{booking.payment ? `Pembayaran ${booking.payment.status} (${booking.payment.provider})` : 'Belum dibayar'}</small></div></article>) : <div className="empty-state">Belum ada booking.</div>}</section>
+  </main>
+}

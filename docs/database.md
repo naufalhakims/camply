@@ -69,6 +69,21 @@ bookings 1:0..1 payments
     amount / currency  copied from the booking price snapshot
     status             succeeded
     created_at
+
+trips 1:0..1 trip_game_rooms
+    prompt       text  organizer-defined, 10..500
+    status       open | completed
+    │
+    └── 1:N trip_game_responses
+            author_id          private, not readable by client roles
+            body               text  1..500
+            moderation_status  visible | hidden
+            UNIQUE (room_id, author_id)  -- one response per traveler
+            │
+            └── 1:N trip_game_reports
+                    reporter_id  private, not readable by client roles
+                    reason       text  5..400
+                    status       open | resolved | dismissed
 ```
 
 ## Decisions and why
@@ -126,6 +141,18 @@ same trip wait on the same row lock, so two simultaneous requests cannot both ta
 Pending holds last 15 minutes. `get_trip_seats_remaining()` is only a display hint; the reservation
 function always checks capacity again. Organizers cannot lower capacity below currently held or
 confirmed seats.
+
+**Trip game access comes from confirmed bookings.** One room can be created for a published trip by
+its organizer (or an admin). A traveler can read and submit in that room only while a confirmed
+booking exists for the trip. Each traveler can submit one 500-character response. Room completion
+is one-way and stops new responses while leaving visible responses readable.
+
+**Responses and reports remain anonymous to client queries.** Column-level `SELECT` grants exclude
+`trip_game_responses.author_id` and `trip_game_reports.reporter_id`, including for trip organizers.
+Security-definer functions use those identifiers only to enforce one response per member, prevent
+self-reporting, and limit access. Organizers of the trip and admins can hide or restore a response
+and resolve/dismiss reports; other participants see only visible responses and cannot see who filed
+a report.
 
 **Booking writes use narrow database functions.** Clients have `SELECT` only on `bookings`; direct
 inserts or status/price edits are denied. `reserve_trip_seats()` takes only trip ID and quantity,
@@ -193,6 +220,14 @@ npx supabase db query --linked --file supabase/tests/rls.test.sql
 
 The suite ends with `finish(true)`, so this fallback returns an error if an assertion fails; all
 fixtures remain inside the test transaction and are rolled back.
+
+`supabase/tests/trip_game.test.sql` verifies confirmed-booking eligibility, organizer ownership,
+author and reporter privacy, one response per participant, self-report and duplicate-report blocks,
+moderation, report review, and room completion. Run it against the linked project without Docker:
+
+```powershell
+npx supabase db query --linked --file supabase/tests/trip_game.test.sql
+```
 
 Two traps this suite guards against, both of which produce false passes:
 
