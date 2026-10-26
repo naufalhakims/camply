@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { supabase } from './lib/supabase'
+import { useLanguage } from './lib/i18n'
 
 type Role = 'traveler' | 'organizer' | 'admin'
 type GameRoom = {
@@ -33,8 +34,8 @@ type GameRoomView = {
   error: string
 }
 
-function formatTimestamp(value: string) {
-  return new Intl.DateTimeFormat('id-ID', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value))
+function formatTimestamp(value: string, locale: string) {
+  return new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value))
 }
 
 async function fetchGameRoomView(roomId: string, canModerate: boolean): Promise<GameRoomView> {
@@ -84,6 +85,8 @@ export default function TripGamePage({ roomId, role, onBack }: {
   role: Role
   onBack: () => void
 }) {
+  const { language, t } = useLanguage()
+  const locale = language === 'en' ? 'en-US' : 'id-ID'
   const [room, setRoom] = useState<GameRoom | null>(null)
   const [responses, setResponses] = useState<GameResponse[]>([])
   const [reports, setReports] = useState<GameReport[]>([])
@@ -222,37 +225,37 @@ export default function TripGamePage({ roomId, role, onBack }: {
   const responseById = new Map(responses.map(response => [response.id, response]))
 
   return <main className="content profile-page trip-game-page">
-    <button className="text-button back-link" onClick={onBack}>← Kembali</button>
-    {loading ? <div className="empty-state">Memuat ruang…</div> : error && !room ? <div className="empty-state" role="alert">{error}</div> : room ? <>
-      <span className="eyebrow">RUANG CERITA ANONIM</span>
-      <div className="game-heading"><div><h1>{room.trip?.title ?? 'Trip'}</h1><p>{room.trip?.destination ?? ''}</p></div><span className={`status-pill ${room.status === 'completed' ? 'status-expired' : 'status-published'}`}>{room.status === 'open' ? 'terbuka' : 'selesai'}</span></div>
-      <section className="panel game-prompt"><span className="eyebrow">PROMPT DARI ORGANIZER</span><h2>{room.prompt}</h2><p>Jawaban dibagikan tanpa nama. Jangan menulis informasi pribadi atau konten yang menyakiti peserta lain.</p></section>
-      {error && <p className="game-feedback game-error" role="alert">{error}</p>}
-      {notice && <p className="game-feedback" role="status">{notice}</p>}
+    <button className="text-button back-link" onClick={onBack}>← {t('Kembali')}</button>
+    {loading ? <div className="empty-state">{t('Memuat ruang…')}</div> : error && !room ? <div className="empty-state" role="alert">{t(error)}</div> : room ? <>
+      <span className="eyebrow">{t('RUANG CERITA ANONIM')}</span>
+      <div className="game-heading"><div><h1>{room.trip?.title ?? 'Trip'}</h1><p>{room.trip?.destination ?? ''}</p></div><span className={`status-pill ${room.status === 'completed' ? 'status-expired' : 'status-published'}`}>{t(room.status === 'open' ? 'terbuka' : 'selesai')}</span></div>
+      <section className="panel game-prompt"><span className="eyebrow">{t('PROMPT DARI ORGANIZER')}</span><h2>{room.prompt}</h2><p>{t('Jawaban dibagikan tanpa nama. Jangan menulis informasi pribadi atau konten yang menyakiti peserta lain.')}</p></section>
+      {error && <p className="game-feedback game-error" role="alert">{t(error)}</p>}
+      {notice && <p className="game-feedback" role="status">{t(notice)}</p>}
 
-      {myResponseId && !responseById.has(myResponseId) && <p className="game-feedback">Jawabanmu sedang disembunyikan moderator.</p>}
-      {!canParticipate && <p className="game-feedback">Hanya traveler dengan booking confirmed yang dapat mengirim jawaban.</p>}
+      {myResponseId && !responseById.has(myResponseId) && <p className="game-feedback">{t('Jawabanmu sedang disembunyikan moderator.')}</p>}
+      {!canParticipate && <p className="game-feedback">{t('Hanya traveler dengan booking confirmed yang dapat mengirim jawaban.')}</p>}
       {canParticipate && !myResponseId && room.status === 'open' && <form className="panel game-response-form" onSubmit={submitResponse}>
-        <label htmlFor="game-response">JAWABAN ANONIM</label>
-        <textarea id="game-response" name="body" minLength={1} maxLength={500} rows={4} required placeholder="Tulis satu jawaban singkat…" />
-        <div className="game-form-footer"><small>Maksimal 500 karakter. Jawaban tidak dapat diubah setelah dikirim.</small><button className="primary-button" type="submit" disabled={busy}>{busy ? 'Mengirim…' : 'Kirim jawaban'}</button></div>
+        <label htmlFor="game-response">{t('JAWABAN ANONIM')}</label>
+        <textarea id="game-response" name="body" minLength={1} maxLength={500} rows={4} required placeholder={t('Tulis satu jawaban singkat…')} />
+        <div className="game-form-footer"><small>{t('Maksimal 500 karakter. Jawaban tidak dapat diubah setelah dikirim.')}</small><button className="primary-button" type="submit" disabled={busy}>{busy ? t('Mengirim…') : t('Kirim jawaban')}</button></div>
       </form>}
-      {room.status === 'completed' && <p className="game-feedback">Sesi ini sudah ditutup dan tidak menerima jawaban baru.</p>}
+      {room.status === 'completed' && <p className="game-feedback">{t('Sesi ini sudah ditutup dan tidak menerima jawaban baru.')}</p>}
 
-      <section className="game-responses"><div className="game-section-heading"><div><span className="eyebrow">PAPAN CERITA</span><h2>{responses.length} jawaban</h2></div>{canModerate && room.status === 'open' && <button className="outline-button" disabled={busy} onClick={() => void completeRoom()}>Tutup sesi</button>}</div>
+      <section className="game-responses"><div className="game-section-heading"><div><span className="eyebrow">{t('PAPAN CERITA')}</span><h2>{responses.length} {t('jawaban')}</h2></div>{canModerate && room.status === 'open' && <button className="outline-button" disabled={busy} onClick={() => void completeRoom()}>{t('Tutup sesi')}</button>}</div>
         {responses.length ? <div className="game-response-list">{responses.map((response, index) => <article className={`panel game-response ${response.moderation_status === 'hidden' ? 'game-response-hidden' : ''}`} key={response.id}>
-          <div className="game-response-meta"><span>{myResponseId === response.id ? 'Jawabanmu · anonim' : `Cerita ${index + 1} · anonim`}</span><time dateTime={response.created_at}>{formatTimestamp(response.created_at)}</time></div>
+          <div className="game-response-meta"><span>{myResponseId === response.id ? t('Jawabanmu · anonim') : `${t('Cerita')} ${index + 1} · ${t('anonim')}`}</span><time dateTime={response.created_at}>{formatTimestamp(response.created_at, locale)}</time></div>
           <p>{response.body}</p>
-          {response.moderation_status === 'hidden' && <span className="game-hidden-label">Disembunyikan dari peserta</span>}
+          {response.moderation_status === 'hidden' && <span className="game-hidden-label">{t('Disembunyikan dari peserta')}</span>}
           <div className="game-response-actions">
-            {canParticipate && myResponseId !== response.id && response.moderation_status === 'visible' && room.status === 'open' && <button className="text-button" disabled={busy} onClick={() => setReportingResponseId(reportingResponseId === response.id ? null : response.id)}>Laporkan</button>}
-            {canModerate && <button className="text-button" disabled={busy} onClick={() => void setResponseVisibility(response, response.moderation_status === 'visible' ? 'hidden' : 'visible')}>{response.moderation_status === 'visible' ? 'Sembunyikan' : 'Tampilkan kembali'}</button>}
+            {canParticipate && myResponseId !== response.id && response.moderation_status === 'visible' && room.status === 'open' && <button className="text-button" disabled={busy} onClick={() => setReportingResponseId(reportingResponseId === response.id ? null : response.id)}>{t('Laporkan')}</button>}
+            {canModerate && <button className="text-button" disabled={busy} onClick={() => void setResponseVisibility(response, response.moderation_status === 'visible' ? 'hidden' : 'visible')}>{t(response.moderation_status === 'visible' ? 'Sembunyikan' : 'Tampilkan kembali')}</button>}
           </div>
-          {canParticipate && reportingResponseId === response.id && <form className="game-report-form" onSubmit={event => void submitReport(event, response.id)}><label htmlFor={`report-${response.id}`}>ALASAN LAPORAN</label><textarea id={`report-${response.id}`} name="reason" minLength={5} maxLength={400} rows={3} required placeholder="Jelaskan apa yang perlu ditinjau…" /><button className="outline-button" type="submit" disabled={busy}>{busy ? 'Mengirim…' : 'Kirim laporan'}</button></form>}
-        </article>)}</div> : <div className="empty-state">Belum ada jawaban. Jadilah yang pertama berbagi cerita.</div>}
+          {canParticipate && reportingResponseId === response.id && <form className="game-report-form" onSubmit={event => void submitReport(event, response.id)}><label htmlFor={`report-${response.id}`}>{t('ALASAN LAPORAN')}</label><textarea id={`report-${response.id}`} name="reason" minLength={5} maxLength={400} rows={3} required placeholder={t('Jelaskan apa yang perlu ditinjau…')} /><button className="outline-button" type="submit" disabled={busy}>{busy ? t('Mengirim…') : t('Kirim laporan')}</button></form>}
+        </article>)}</div> : <div className="empty-state">{t('Belum ada jawaban. Jadilah yang pertama berbagi cerita.')}</div>}
       </section>
 
-      {canModerate && <section className="game-reports"><span className="eyebrow">MODERASI</span><h2>Laporan peserta</h2>{reports.length ? <div className="game-response-list">{reports.map(report => <article className="panel game-report" key={report.id}><div className="game-response-meta"><span>{report.status === 'open' ? 'Perlu ditinjau' : report.status === 'resolved' ? 'Selesai' : 'Tidak perlu tindakan'}</span><time dateTime={report.created_at}>{formatTimestamp(report.created_at)}</time></div><p>{report.reason}</p><small>{responseById.get(report.response_id)?.body ?? 'Isi jawaban sudah tidak tersedia.'}</small>{report.status === 'open' && <div className="game-response-actions"><button className="outline-button" disabled={busy} onClick={() => void reviewReport(report, 'resolved')}>Tandai selesai</button><button className="text-button" disabled={busy} onClick={() => void reviewReport(report, 'dismissed')}>Tutup laporan</button></div>}</article>)}</div> : <div className="empty-state">Belum ada laporan.</div>}</section>}
+      {canModerate && <section className="game-reports"><span className="eyebrow">{t('MODERASI')}</span><h2>{t('Laporan peserta')}</h2>{reports.length ? <div className="game-response-list">{reports.map(report => <article className="panel game-report" key={report.id}><div className="game-response-meta"><span>{t(report.status === 'open' ? 'Perlu ditinjau' : report.status === 'resolved' ? 'Selesai' : 'Tidak perlu tindakan')}</span><time dateTime={report.created_at}>{formatTimestamp(report.created_at, locale)}</time></div><p>{report.reason}</p><small>{responseById.get(report.response_id)?.body ?? t('Isi jawaban sudah tidak tersedia.')}</small>{report.status === 'open' && <div className="game-response-actions"><button className="outline-button" disabled={busy} onClick={() => void reviewReport(report, 'resolved')}>{t('Tandai selesai')}</button><button className="text-button" disabled={busy} onClick={() => void reviewReport(report, 'dismissed')}>{t('Tutup laporan')}</button></div>}</article>)}</div> : <div className="empty-state">{t('Belum ada laporan.')}</div>}</section>}
     </> : null}
   </main>
 }

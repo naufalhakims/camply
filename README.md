@@ -94,6 +94,10 @@ summer travel photography credited to Unsplash photographers, and category filte
 category when creating or editing a trip. Apply `20261027000011_trip_categories.sql` before using this
 feature; existing trips default to `other` until organizers reclassify them.
 
+The interface supports Indonesian and English. Visitors can switch languages in the navigation bar;
+the selection is saved in the browser. User-written trip titles, descriptions, prompts, and responses
+remain in the language their authors entered.
+
 Database migrations for `profiles`, `trips`, `bookings`, and `payments` enforce row ownership with RLS
 and restrict client writes with Postgres grants and trusted database functions. The 51-assertion SQL
 authorization suite is in `supabase/tests/rls.test.sql`.

@@ -1,9 +1,9 @@
-export function formatDate(value: string) {
-  return new Intl.DateTimeFormat('id-ID', { dateStyle: 'medium' }).format(new Date(value))
+export function formatDate(value: string, locale = 'id-ID') {
+  return new Intl.DateTimeFormat(locale, { dateStyle: 'medium' }).format(new Date(value))
 }
 
-export function formatMoney(value: number, currency: string) {
-  return new Intl.NumberFormat('id-ID', { style: 'currency', currency }).format(Number(value))
+export function formatMoney(value: number, currency: string, locale = 'id-ID') {
+  return new Intl.NumberFormat(locale, { style: 'currency', currency }).format(Number(value))
 }
 
 export function toDateTimeLocal(value: string) {

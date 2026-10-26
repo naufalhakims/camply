@@ -338,6 +338,10 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 .site-header nav a, .signin-link, .profile-link { color: #3d6479; font-size: 13px; font-weight: 600; transition: color 160ms ease; }
 .site-header nav a:hover, .profile-link:hover { color: var(--ocean); }
 .header-actions { gap: 14px; }
+.language-switch { display: inline-flex; align-items: center; gap: 3px; flex: 0 0 auto; padding: 3px; border: 1px solid rgba(75,157,169,.2); border-radius: 999px; background: rgba(255,255,255,.66); color: #71827a; font-size: 10px; }
+.language-switch button { min-width: 31px; min-height: 27px; padding: 4px 7px; border-radius: 999px; background: transparent; color: var(--ocean-deep); font-size: 10px; font-weight: 750; cursor: pointer; }
+.language-switch button[aria-pressed="true"] { background: var(--ocean); color: white; }
+.language-switch button:focus-visible { outline-offset: 1px; }
 .profile-link { border-radius: 9px; padding: 8px 10px; }
 .role-label { padding: 6px 10px; background: #e8f4f8; color: #426b80; font-size: 10px; letter-spacing: .03em; }
 .role-organizer { background: rgba(145, 198, 188, .42); color: var(--ocean-deep); }
