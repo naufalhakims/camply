@@ -58,6 +58,35 @@ function App() {
   const [filters, setFilters] = useState<Filters>({ destination: '', category: '', from: '', currency: 'IDR', maxPrice: '' })
   const selectedTrip = trips.find((trip) => trip.slug === tripSlug && new Date(trip.starts_at).getTime() > now)
     ?? (routeTrip?.slug === tripSlug && new Date(routeTrip.starts_at).getTime() > now ? routeTrip : null)
+
+  useEffect(() => {
+    const pageTitles: Record<string, string> = {
+      discover: 'Adventure Trips in Indonesia',
+      login: 'Sign In or Create an Account',
+      bookings: 'My Bookings',
+      organizer: 'Manage Trips',
+      profile: 'Profile',
+      admin: 'Admin Dashboard',
+      'trip-game': 'Trip Story Room',
+    }
+    const isTripDetail = Boolean(tripSlug)
+    const title = selectedTrip
+      ? `Explore ${selectedTrip.title} | Camply`
+      : `${pageTitles[page] ?? pageTitles.discover} | Camply`
+    const description = selectedTrip
+      ? `Discover ${selectedTrip.title}, an adventure trip in Indonesia with Camply. View dates and booking information.`.slice(0, 160)
+      : 'Discover adventure trips across Indonesia with Camply. Explore nature, beaches, cities, local culture, and memorable getaways from local organizers.'
+    const robots = page === 'discover' && (!isTripDetail || selectedTrip) ? 'index,follow' : 'noindex,nofollow'
+
+    document.title = title
+    document.querySelector<HTMLMetaElement>('meta[name="description"]')?.setAttribute('content', description)
+    document.querySelector<HTMLMetaElement>('meta[name="robots"]')?.setAttribute('content', robots)
+    document.querySelector<HTMLMetaElement>('meta[property="og:title"]')?.setAttribute('content', title)
+    document.querySelector<HTMLMetaElement>('meta[property="og:description"]')?.setAttribute('content', description)
+    document.querySelector<HTMLMetaElement>('meta[name="twitter:title"]')?.setAttribute('content', title)
+    document.querySelector<HTMLMetaElement>('meta[name="twitter:description"]')?.setAttribute('content', description)
+  }, [page, selectedTrip, tripSlug])
+
   const [bookings, setBookings] = useState<Booking[]>([])
   const [managedTrips, setManagedTrips] = useState<Trip[]>([])
   const [managedBookings, setManagedBookings] = useState<Booking[]>([])
@@ -84,6 +113,15 @@ function App() {
     const timer = window.setInterval(() => setNow(Date.now()), 60_000)
     return () => window.clearInterval(timer)
   }, [])
+
+  useEffect(() => {
+    if (location.pathname !== '/' || !location.hash) return
+    const targetId = decodeURIComponent(location.hash.slice(1))
+    const frameId = window.requestAnimationFrame(() => {
+      document.getElementById(targetId)?.scrollIntoView({ block: 'start' })
+    })
+    return () => window.cancelAnimationFrame(frameId)
+  }, [location.pathname, location.hash])
 
   useEffect(() => {
     if (!tripSlug || trips.some(trip => trip.slug === tripSlug)) return

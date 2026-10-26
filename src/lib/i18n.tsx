@@ -27,7 +27,7 @@ const englishBase: Record<string, string> = {
   'Hutan, air terjun, dan udara segar.': 'Forests, waterfalls, and fresh air.', 'Langit luas, pasir hangat, dan ombak.': 'Open skies, warm sand, and waves.',
   'Sudut baru, jalan kaki, dan kuliner lokal.': 'New corners, city walks, and local food.', 'Ruang untuk mengenal tradisi dan cerita lokal.': 'A chance to discover local traditions and stories.',
   'Jalur baru, langkah panjang, cerita seru.': 'New trails, long walks, and great stories.', 'Temukan perjalanan dengan caramu sendiri.': 'Find a trip that feels right for you.',
-  'trip': 'trips', 'Foto': 'Photo', 'orang': 'person', 'Lihat trip': 'View trip', 'Kembali ke semua trip': 'Back to all trips',
+  'trip': 'trips', 'orang': 'person', 'Lihat trip': 'View trip', 'Kembali ke semua trip': 'Back to all trips',
   'TRIP PILIHAN CAMPly': 'CAMPLY FEATURED TRIP', 'TENTANG PERJALANAN': 'ABOUT THIS TRIP', 'Petualangan dimulai di sini.': 'Your adventure starts here.',
   'Informasi perjalanan akan segera ditambahkan oleh organizer.': 'Trip details will be added by the organizer soon.', 'HARGA PER ORANG': 'PRICE PER PERSON',
   'Memeriksa akses booking…': 'Checking booking access…', 'Memeriksa kursi…': 'Checking seats…', 'kursi tersisa': 'seats remaining',
@@ -129,7 +129,7 @@ const englishExtras: Record<string, string> = {
   'Isi jawaban sudah tidak tersedia.': 'Response is no longer available.', 'Jawaban dibagikan tanpa nama. Jangan menulis informasi pribadi atau konten yang menyakiti peserta lain.': 'Responses are anonymous. Do not share personal information or content that could harm other participants.',
   'Tulis satu jawaban singkat…': 'Write a short response…', 'Maksimal 500 karakter. Jawaban tidak dapat diubah setelah dikirim.': 'Up to 500 characters. Responses cannot be edited after submission.',
   'Jelaskan apa yang perlu ditinjau…': 'Explain what should be reviewed…', 'anonim': 'anonymous', 'jawaban': 'responses',
-  'Jalan-jalan yang punya cerita.': 'Trips that come with stories.', 'Foto kategori: Unsplash · Made for the curious · Indonesia': 'Category photos: Unsplash · Made for the curious · Indonesia',
+  'Jalan-jalan yang punya cerita.': 'Trips that come with stories.',
   'Pilih bahasa': 'Choose language', 'Camply beranda': 'Camply home', 'Role akun gagal diperiksa.': 'Could not verify account role.',
   'Jumlah peserta': 'Number of travelers', 'Mata uang': 'Currency', 'Pilih kategori': 'Choose a category', 'Traveler': 'Traveler', 'Organizer': 'Organizer',
   'Daftar': 'Sign up', 'Bio': 'Bio', 'Trip detail tidak tersedia': 'Trip details unavailable',
@@ -139,7 +139,10 @@ const englishExtras: Record<string, string> = {
   'Pembayaran simulasi gagal. Periksa booking dan coba lagi.': 'Simulated payment failed. Check the booking and try again.',
   'Trip ini sudah memiliki ruang cerita.': 'This trip already has a story room.',
   'Ruang cerita tidak dapat dibuat. Pastikan trip sudah terbit dan Anda pemilik trip.': 'Could not create the story room. Make sure the trip is published and you own it.',
-  'INDONESIA · SUMMER ESCAPES': 'INDONESIA · SUMMER GETAWAYS',
+  'Menu akun': 'Account menu', 'Navigasi utama': 'Main navigation',
+  'Pilih dengan tombol panah, lalu tekan Enter.': 'Use the arrow keys to choose, then press Enter.',
+  'Pilih tanggal': 'Choose a date', 'Pilih tanggal keberangkatan': 'Choose a departure date',
+  'Bulan sebelumnya': 'Previous month', 'Bulan berikutnya': 'Next month', 'Hari ini': 'Today', 'Hapus tanggal': 'Clear date',
 }
 
 const english: Record<string, string> = { ...englishBase, ...englishExtras }

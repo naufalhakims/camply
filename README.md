@@ -89,10 +89,21 @@ Organizers can still create game rooms and moderate responses for trips they own
 through a database function that snapshots price and serializes capacity checks.
 Each booking can contain multiple seats, holds seats for 15 minutes, and starts as `pending_payment`.
 
-The landing page includes clickable trip categories (nature, beach, city, culture, adventure, and other),
-summer travel photography credited to Unsplash photographers, and category filters. Organizers choose a
-category when creating or editing a trip. Apply `20261027000011_trip_categories.sql` before using this
-feature; existing trips default to `other` until organizers reclassify them.
+The landing page includes clickable trip categories (nature, beach, city, culture, adventure, and other)
+and category filters. Organizers choose a category when creating or editing a trip. Apply
+`20261027000011_trip_categories.sql` before using this feature; existing trips default to `other` until
+organizers reclassify them.
+
+## Image credits
+
+Landing page photos are from Unsplash:
+
+- Hero — Claudio Schwarz, [photo](https://unsplash.com/photos/a-surfer-walks-on-a-sandy-beach-at-sunset-pv-n00Z7x54).
+- Nature — Walyudin, [photo](https://unsplash.com/photos/a-stream-running-through-a-lush-green-forest-Pgf1bvKH6Mw).
+- Beach — Kristijan Arsov, [photo](https://unsplash.com/photos/a-person-standing-in-the-water-at-the-beach-S6-KD4OHDWE).
+- City — Iqro Rinaldi, [photo](https://unsplash.com/photos/view-of-a-city-skyline-with-traffic-visible-ZEjfXBi3G0c).
+- Culture — Jörg Bauer, [photo](https://unsplash.com/photos/a-walkway-leading-to-a-temple-surrounded-by-lush-green-trees-HH59QHK7_Gk).
+- Adventure — Yub 12, [photo](https://unsplash.com/photos/a-group-of-people-hiking-up-a-grassy-hill-Fb3dwD2Qjj0).
 
 The interface supports Indonesian and English. Visitors can switch languages in the navigation bar;
 the selection is saved in the browser. User-written trip titles, descriptions, prompts, and responses

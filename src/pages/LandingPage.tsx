@@ -2,6 +2,7 @@ import type { Filters, Trip } from '../types'
 import { travelCategories, summerHeroImage } from '../data/travelCategories'
 import TripCard from '../components/TripCard'
 import { useLanguage } from '../lib/i18n'
+import { TripFilterDate, TripFilterSelect } from '../components/TripFilterControls'
 
 type Props = {
   trips: Trip[]
@@ -31,9 +32,7 @@ export default function LandingPage({ trips, visibleTrips, filters, loading, err
           <h1>{t('Waktunya')}<br /><em>{t('cari suasana.')}</em></h1>
           <p>{t('Dari udara pegunungan sampai senja di pantai. Pilih perjalanan yang terasa seperti liburanmu.')}</p>
           <a className="primary-button hero-cta" href="#categories">{t('Temukan suasananya')} <span>↓</span></a>
-          <a className="hero-photo-credit" href={summerHeroImage.photoUrl} target="_blank" rel="noreferrer">{t('Foto')} {summerHeroImage.photographer} · Unsplash</a>
         </div>
-        <div className="hero-location"><span>01 / 06</span><span>{t('INDONESIA · SUMMER ESCAPES')}</span></div>
       </section>
 
       <section id="categories" className="travel-categories">
@@ -56,7 +55,6 @@ export default function LandingPage({ trips, visibleTrips, filters, loading, err
                 </span>
                 <span className="category-arrow" aria-hidden="true">↗</span>
               </button>
-              <a className="category-photo-credit" href={category.photoUrl} target="_blank" rel="noreferrer">{t('Foto')} {category.photographer} · Unsplash</a>
             </article>
           })}
         </div>
@@ -66,9 +64,9 @@ export default function LandingPage({ trips, visibleTrips, filters, loading, err
         <div className="section-heading"><div><span className="eyebrow">{t('KURASI PERJALANAN')}</span><h2>{t('Trip yang menunggumu')}</h2></div><span className="trip-count">{visibleTrips.length} {t('trip ditemukan')}</span></div>
         <div className="filter-panel">
           <label>{t('DESTINASI')}<input value={filters.destination} onChange={event => onFiltersChange({ ...filters, destination: event.target.value })} placeholder={t('Contoh: Lombok')} /></label>
-          <label>{t('KATEGORI')}<select value={filters.category} onChange={event => onFiltersChange({ ...filters, category: event.target.value as Filters['category'] })}><option value="">{t('Semua suasana')}</option>{travelCategories.map(category => <option key={category.id} value={category.id}>{t(category.name)}</option>)}</select></label>
-          <label>{t('BERANGKAT SETELAH')}<input type="date" value={filters.from} onChange={event => onFiltersChange({ ...filters, from: event.target.value })} /></label>
-          <label>{t('MATA UANG')}<select value={filters.currency} onChange={event => onFiltersChange({ ...filters, currency: event.target.value })}><option value="">{t('Semua mata uang')}</option>{[...new Set(['IDR', ...trips.map(trip => trip.currency)])].map(currency => <option key={currency} value={currency}>{currency}</option>)}</select></label>
+          <label className="filter-select-field filter-category-field">{t('KATEGORI')}<TripFilterSelect label={t('Pilih kategori')} value={filters.category} options={[{ value: '', label: t('Semua suasana') }, ...travelCategories.map(category => ({ value: category.id, label: t(category.name) }))]} onChange={category => onFiltersChange({ ...filters, category: category as Filters['category'] })} /></label>
+          <label className="filter-date-field">{t('BERANGKAT SETELAH')}<TripFilterDate value={filters.from} onChange={from => onFiltersChange({ ...filters, from })} /></label>
+          <label className="filter-select-field filter-currency-field">{t('MATA UANG')}<TripFilterSelect label={t('Pilih mata uang')} value={filters.currency} options={[{ value: '', label: t('Semua mata uang') }, ...[...new Set(['IDR', ...trips.map(trip => trip.currency)])].map(currency => ({ value: currency, label: currency }))]} onChange={currency => onFiltersChange({ ...filters, currency })} /></label>
           <label>{t('HARGA MAKSIMAL')} ({filters.currency || '—'})<input type="number" min="0" inputMode="numeric" value={filters.maxPrice} onChange={event => onFiltersChange({ ...filters, maxPrice: event.target.value })} placeholder={filters.currency || t('Pilih mata uang')} disabled={!filters.currency} /></label>
           <button className="text-button clear-filters" onClick={() => onFiltersChange({ destination: '', category: '', from: '', currency: 'IDR', maxPrice: '' })}>{t('Hapus filter')}</button>
         </div>
@@ -85,6 +83,6 @@ export default function LandingPage({ trips, visibleTrips, filters, loading, err
         <a className="summer-values-link" href="#explore">{t('Cari perjalanan musim panas')} <span>→</span></a>
       </section>
     </main>
-    <footer className="site-footer"><span>Camply</span><span>{t('Jalan-jalan yang punya cerita.')}</span><span>{t('Foto kategori: Unsplash · Made for the curious · Indonesia')}</span></footer>
+    <footer className="site-footer"><span>Camply</span><span>{t('Jalan-jalan yang punya cerita.')}</span><span>Made for the curious · Indonesia</span></footer>
   </>
 }
