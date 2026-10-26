@@ -83,10 +83,16 @@ traveler profile editing; explicit traveler/organizer/admin roles with database-
 and participant booking visibility with Cloudinary cover uploads; an admin operations summary; published trip discovery with destination,
 start-date and maximum-price filters; trip details; booking history; and an anonymous prompt room for
 confirmed trip participants with organizer moderation and reporting.
+Trips disappear from public discovery when their start time passes and remain in the organizer archive.
 Only traveler accounts can create/cancel bookings, make the mock payment, or submit/report game responses.
 Organizers can still create game rooms and moderate responses for trips they own. Reservations are created
 through a database function that snapshots price and serializes capacity checks.
 Each booking can contain multiple seats, holds seats for 15 minutes, and starts as `pending_payment`.
+
+The landing page includes clickable trip categories (nature, beach, city, culture, adventure, and other),
+summer travel photography credited to Unsplash photographers, and category filters. Organizers choose a
+category when creating or editing a trip. Apply `20261027000011_trip_categories.sql` before using this
+feature; existing trips default to `other` until organizers reclassify them.
 
 Database migrations for `profiles`, `trips`, `bookings`, and `payments` enforce row ownership with RLS
 and restrict client writes with Postgres grants and trusted database functions. The 51-assertion SQL

@@ -28,6 +28,7 @@ trips
     title                 text  NOT NULL, 3..140
     description           text  ≤ 5000
     destination           text  NOT NULL, 2..120
+    category             text  NOT NULL DEFAULT 'other'  CHECK (nature | beach | city | culture | adventure | other)
     starts_at             timestamptz  NOT NULL
     ends_at               timestamptz  NOT NULL
     price                 numeric(12,2)  NOT NULL  CHECK (>= 0)
@@ -42,6 +43,7 @@ trips
     CHECK (ends_at > starts_at)
 
 INDEX (status, starts_at)   -- public listing
+INDEX (category, starts_at) WHERE status = 'published' -- category discovery
 INDEX (organizer_id)        -- "my trips" dashboard
 
 profiles
@@ -94,6 +96,10 @@ metadata becomes `traveler`. After profile creation, the browser cannot change `
 The browser receives the current user's role through `current_app_role()`. Admin assignment remains
 restricted to a trusted Supabase project owner. Organizers can manage their own trips and view their
 participants/bookings. Admins can review all trips, bookings, and payment outcomes.
+
+**Public trip discovery includes only upcoming published trips.** Once `starts_at` passes, public
+reads and booking attempts stop. The trip remains in its organizer's dashboard under the archive;
+the database record and booking history are retained.
 
 **`role` is protected by column grants, not RLS.** RLS decides *rows*; it cannot express
 "this column is not yours". The guard is:

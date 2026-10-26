@@ -1,6 +1,7 @@
 import type { Trip } from '../types'
 import { formatDate, formatMoney } from '../lib/format'
 import { Link } from 'react-router-dom'
+import { travelCategories } from '../data/travelCategories'
 
 export default function TripCard({ trip, onSelect }: { trip: Trip; onSelect: () => boolean }) {
   return (
@@ -10,6 +11,7 @@ export default function TripCard({ trip, onSelect }: { trip: Trip; onSelect: () 
           <span className="trip-tag">{trip.destination}</span><span className="image-index">CAMPly · TRIP</span>
         </div>
         <div className="trip-card-body">
+          <span className="trip-category-label">{travelCategories.find(category => category.id === trip.category)?.name ?? 'Lainnya'}</span>
           <div className="trip-date">{formatDate(trip.starts_at)} — {formatDate(trip.ends_at)}</div>
           <h3>{trip.title}</h3>
           <div className="trip-card-footer"><span>{formatMoney(trip.price, trip.currency)} <small>/ orang</small></span><span className="arrow-circle">↗</span></div>

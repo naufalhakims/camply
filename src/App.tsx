@@ -7,6 +7,7 @@ import { supabase } from './lib/supabase'
 import { uploadTripCover } from './lib/cloudinary'
 import TripGamePage from './TripGamePage'
 import type { Booking, Filters, Profile, Trip, TripGameRoom } from './types'
+import { travelCategories } from './data/travelCategories'
 import SiteHeader from './components/SiteHeader'
 import AuthModal from './components/AuthModal'
 import Feedback from './components/Feedback'
@@ -19,7 +20,7 @@ import OrganizerBookingsPage from './pages/OrganizerBookingsPage'
 import AdminDashboardPage from './pages/AdminDashboardPage'
 import ProfilePage from './pages/ProfilePage'
 
-const tripColumns = 'id,organizer_id,slug,title,description,destination,starts_at,ends_at,price,currency,capacity,status,cover_image_url,cover_image_public_id'
+const tripColumns = 'id,organizer_id,slug,title,description,destination,category,starts_at,ends_at,price,currency,capacity,status,cover_image_url,cover_image_public_id'
 
 function App() {
   const location = useLocation()
@@ -53,9 +54,10 @@ function App() {
   const [trips, setTrips] = useState<Trip[]>([])
   const [routeTrip, setRouteTrip] = useState<Trip | null>(null)
   const [loadingTripBySlug, setLoadingTripBySlug] = useState(false)
-  const [filters, setFilters] = useState<Filters>({ destination: '', from: '', currency: 'IDR', maxPrice: '' })
-  const selectedTrip = trips.find((trip) => trip.slug === tripSlug)
-    ?? (routeTrip?.slug === tripSlug ? routeTrip : null)
+  const [now, setNow] = useState(() => Date.now())
+  const [filters, setFilters] = useState<Filters>({ destination: '', category: '', from: '', currency: 'IDR', maxPrice: '' })
+  const selectedTrip = trips.find((trip) => trip.slug === tripSlug && new Date(trip.starts_at).getTime() > now)
+    ?? (routeTrip?.slug === tripSlug && new Date(routeTrip.starts_at).getTime() > now ? routeTrip : null)
   const [bookings, setBookings] = useState<Booking[]>([])
   const [managedTrips, setManagedTrips] = useState<Trip[]>([])
   const [managedBookings, setManagedBookings] = useState<Booking[]>([])
@@ -79,6 +81,11 @@ function App() {
   const [notice, setNotice] = useState('')
 
   useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 60_000)
+    return () => window.clearInterval(timer)
+  }, [])
+
+  useEffect(() => {
     if (!tripSlug || trips.some(trip => trip.slug === tripSlug)) return
     let active = true
     const loadTripFromPublicUrl = async () => {
@@ -87,6 +94,7 @@ function App() {
         .select(tripColumns)
         .eq('slug', tripSlug)
         .eq('status', 'published')
+        .gt('starts_at', new Date().toISOString())
         .maybeSingle()
       if (!active) return
       if (queryError) setError('Detail trip gagal dimuat. Periksa koneksi dan akses trip publik.')
@@ -124,6 +132,7 @@ function App() {
       .from('trips')
       .select(tripColumns)
       .eq('status', 'published')
+      .gt('starts_at', new Date().toISOString())
       .order('starts_at', { ascending: true })
     if (queryError) setError('Trip belum dapat dimuat. Periksa koneksi dan migrasi Supabase.')
     else { setError(''); setTrips((data ?? []) as Trip[]) }
@@ -133,7 +142,7 @@ function App() {
   useEffect(() => {
     let active = true
     const fetchTrips = async () => {
-      const { data, error: queryError } = await supabase.from('trips').select(tripColumns).eq('status', 'published').order('starts_at', { ascending: true })
+      const { data, error: queryError } = await supabase.from('trips').select(tripColumns).eq('status', 'published').gt('starts_at', new Date().toISOString()).order('starts_at', { ascending: true })
       if (!active) return
       if (queryError) setError('Trip belum dapat dimuat. Periksa koneksi dan migrasi Supabase.')
       else setTrips((data ?? []) as Trip[])
@@ -295,12 +304,14 @@ function App() {
     const maxPrice = filters.maxPrice ? Number(filters.maxPrice) : null
     return trips.filter((trip) => {
       const matchesDestination = !destination || trip.destination.toLocaleLowerCase('id-ID').includes(destination)
+      const matchesCategory = !filters.category || trip.category === filters.category
       const matchesDate = !filters.from || trip.starts_at.slice(0, 10) >= filters.from
       const matchesCurrency = !filters.currency || trip.currency === filters.currency
       const matchesPrice = maxPrice === null || (trip.currency === filters.currency && trip.price <= maxPrice)
-      return matchesDestination && matchesDate && matchesCurrency && matchesPrice
+      return new Date(trip.starts_at).getTime() > now
+        && matchesDestination && matchesCategory && matchesDate && matchesCurrency && matchesPrice
     })
-  }, [filters, trips])
+  }, [filters, now, trips])
 
   async function handleAuth(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -365,6 +376,7 @@ function App() {
     const title = String(form.get('title') ?? '').trim()
     const slug = String(form.get('slug') ?? '').trim()
     const destination = String(form.get('destination') ?? '').trim()
+    const category = String(form.get('category') ?? '')
     const description = String(form.get('description') ?? '').trim()
     const startsAt = new Date(String(form.get('starts_at') ?? ''))
     const endsAt = new Date(String(form.get('ends_at') ?? ''))
@@ -375,6 +387,7 @@ function App() {
     const coverImageFile = coverImageValue instanceof File && coverImageValue.size > 0 ? coverImageValue : null
     if (title.length < 3 || title.length > 140 || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)
       || destination.length < 2 || destination.length > 120 || description.length > 5000
+      || !travelCategories.some(item => item.id === category)
       || !Number.isFinite(startsAt.getTime()) || !Number.isFinite(endsAt.getTime())
       || startsAt <= new Date() || endsAt <= startsAt || !Number.isFinite(price) || price < 0
       || !/^[A-Z]{3}$/.test(currency) || !Number.isInteger(capacity) || capacity < 1
@@ -408,6 +421,7 @@ function App() {
       title,
       description: description || null,
       destination,
+      category,
       starts_at: startsAt.toISOString(),
       ends_at: endsAt.toISOString(),
       price,
@@ -627,6 +641,7 @@ function App() {
           ? routeParts[1] === 'bookings'
             ? <OrganizerBookingsPage bookings={managedBookings} />
             : <OrganizerDashboardPage
+              now={now}
               trips={managedTrips}
               bookings={managedBookings}
               rooms={tripGameRooms}

@@ -1,3 +1,5 @@
+import type { TravelCategory } from './data/travelCategories'
+
 export type Trip = {
   id: string
   organizer_id: string
@@ -5,6 +7,7 @@ export type Trip = {
   title: string
   description: string | null
   destination: string
+  category: TravelCategory
   starts_at: string
   ends_at: string
   price: number
@@ -45,4 +48,4 @@ export type TripGameRoom = {
   trip: Pick<Trip, 'title' | 'destination'> | null
 }
 
-export type Filters = { destination: string; from: string; currency: string; maxPrice: string }
+export type Filters = { destination: string; category: TravelCategory | ''; from: string; currency: string; maxPrice: string }
