@@ -31,3 +31,8 @@ supabase/.branches
 *.njsproj
 *.sln
 *.sw?
+
+# Local agent instructions and skills
+/AGENTS.md
+/.agents/
+/.claude/

@@ -3,7 +3,6 @@
 A full-stack adventure trip booking platform. Travelers discover trips, book them, and complete a
 mock payment; signed-in users can create and publish trips they own.
 
-Portfolio project. No real customers, payments, or production traffic.
 
 ## Stack
 
