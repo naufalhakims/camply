@@ -66,7 +66,7 @@ const englishBase: Record<string, string> = {
   'SELAMAT DATANG DI CAMPLY': 'WELCOME TO CAMPLY', 'Senang bertemu lagi.': 'Welcome back.', 'Perjalananmu dimulai di sini.': 'Your next trip starts here.',
   'Masuk untuk melihat akun dan booking-mu.': 'Sign in to view your account and bookings.', 'Pilih cara kamu berpartisipasi di Camply.': 'Choose how you want to use Camply.',
   'Nama tampilan': 'Display name', 'DAFTAR SEBAGAI': 'SIGN UP AS', 'Traveler — cari dan booking trip': 'Traveler — discover and book trips',
-  'Organizer — buat dan kelola trip': 'Organizer — create and manage trips', 'Pilihan ini berlaku saat akun dibuat. Role Admin hanya dapat diberikan oleh pemilik proyek.': 'This choice is set when you create your account. Only the project owner can grant the Admin role.',
+  'Organizer — buat dan kelola trip': 'Organizer — create and manage trips',
   'Kata sandi': 'Password', 'Buat akun': 'Create account', 'Belum punya akun?': 'Don’t have an account?', 'Sudah punya akun?': 'Already have an account?', 'Daftar': 'Sign up',
   'DEMO · MOCK PAYMENT': 'DEMO · MOCK PAYMENT', 'Selesaikan booking': 'Complete booking', 'Ini simulasi untuk portfolio. Tidak ada uang yang ditagih atau dikirim ke penyedia pembayaran.': 'This is a portfolio demo. No money is charged or sent to a payment provider.',
   'peserta': 'travelers', 'Memproses simulasi…': 'Processing simulation…', 'Konfirmasi pembayaran simulasi': 'Confirm simulated payment',

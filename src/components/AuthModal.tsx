@@ -23,7 +23,6 @@ export default function AuthModal({ mode, setMode, onClose, onSubmit, busy = fal
           {mode === 'signup' && <>
             <label>{t('Nama tampilan')}<input name="displayName" autoComplete="name" required maxLength={80} /></label>
             <label>{t('DAFTAR SEBAGAI')}<select name="signupRole" defaultValue="traveler"><option value="traveler">{t('Traveler — cari dan booking trip')}</option><option value="organizer">{t('Organizer — buat dan kelola trip')}</option></select></label>
-            <small className="signup-role-note">{t('Pilihan ini berlaku saat akun dibuat. Role Admin hanya dapat diberikan oleh pemilik proyek.')}</small>
           </>}
           <label>Email<input name="email" type="email" autoComplete="email" required /></label>
           <label>{t('Kata sandi')}<input name="password" type="password" autoComplete={mode === 'signin' ? 'current-password' : 'new-password'} minLength={8} required /></label>
