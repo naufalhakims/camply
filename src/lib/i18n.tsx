@@ -8,6 +8,8 @@ const englishBase: Record<string, string> = {
   traveler: 'Traveler', organizer: 'Organizer', admin: 'Admin',
   'Cari trip': 'Explore trips', 'Tentang': 'About', 'Kelola trip': 'Manage trips', 'Booking': 'Bookings',
   'Akun': 'Account', 'Keluar': 'Sign out', 'Masuk': 'Sign in', 'Mulai eksplorasi': 'Start exploring',
+  'Sedang masuk ke akun…': 'Signing in to your account…', 'Sedang membuat akun…': 'Creating your account…',
+  'Sedang keluar…': 'Signing out…', 'Sedang memproses…': 'Please wait…',
   'Memuat akun…': 'Loading account…', 'ID': 'Indonesian', 'EN': 'English',
   'MUSIM PANAS, CERITA BARU': 'SUMMER, NEW STORIES', 'Waktunya': 'It is time to', 'cari suasana.': 'find your kind of escape.',
   'Dari udara pegunungan sampai senja di pantai. Pilih perjalanan yang terasa seperti liburanmu.': 'From crisp mountain air to sunset by the sea. Find a trip that feels like your kind of getaway.',

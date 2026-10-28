@@ -19,10 +19,12 @@ import OrganizerDashboardPage from './pages/OrganizerDashboardPage'
 import OrganizerBookingsPage from './pages/OrganizerBookingsPage'
 import AdminDashboardPage from './pages/AdminDashboardPage'
 import ProfilePage from './pages/ProfilePage'
+import { useLanguage } from './lib/i18n'
 
 const tripColumns = 'id,organizer_id,slug,title,description,destination,category,starts_at,ends_at,price,currency,capacity,status,cover_image_url,cover_image_public_id'
 
 function App() {
+  const { t } = useLanguage()
   const location = useLocation()
   const navigate = useNavigate()
   const routeParts = location.pathname.split('/').filter(Boolean)
@@ -47,6 +49,7 @@ function App() {
   const [authReady, setAuthReady] = useState(false)
   const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin')
   const [authOpen, setAuthOpen] = useState(false)
+  const [authTransition, setAuthTransition] = useState<'signin' | 'signup' | 'signout' | null>(null)
   const [user, setUser] = useState<User | null>(null)
   const [profile, setProfile] = useState<Profile | null>(null)
   const profileRequestId = useRef(0)
@@ -353,6 +356,7 @@ function App() {
 
   async function handleAuth(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    if (authTransition) return
     setError('')
     setNotice('')
     const form = new FormData(event.currentTarget)
@@ -361,23 +365,40 @@ function App() {
     const displayName = String(form.get('displayName') ?? '').trim()
     const signupRole = form.get('signupRole') === 'organizer' ? 'organizer' : 'traveler'
     if (password.length < 8) { setError('Kata sandi minimal 8 karakter.'); return }
-    const result = authMode === 'signup'
-      ? await supabase.auth.signUp({ email, password, options: { data: { display_name: displayName, signup_role: signupRole } } })
-      : await supabase.auth.signInWithPassword({ email, password })
-    if (result.error) { setError(result.error.message); return }
-    if (authMode === 'signup' && !result.data.session) {
-      setNotice('Akun dibuat. Periksa email untuk menyelesaikan konfirmasi sebelum masuk.')
-    } else {
-      setNotice(authMode === 'signup' ? 'Akun berhasil dibuat.' : 'Berhasil masuk.')
-      setAuthOpen(false)
-      if (page === 'login') navigate(safeNextPath, { replace: true })
+    const mode = authMode
+    setAuthTransition(mode)
+    try {
+      const result = mode === 'signup'
+        ? await supabase.auth.signUp({ email, password, options: { data: { display_name: displayName, signup_role: signupRole } } })
+        : await supabase.auth.signInWithPassword({ email, password })
+      if (result.error) { setError(result.error.message); return }
+      if (mode === 'signup' && !result.data.session) {
+        setNotice('Akun dibuat. Periksa email untuk menyelesaikan konfirmasi sebelum masuk.')
+      } else {
+        setNotice(mode === 'signup' ? 'Akun berhasil dibuat.' : 'Berhasil masuk.')
+        setAuthOpen(false)
+        if (page === 'login') navigate(safeNextPath, { replace: true })
+      }
+    } catch (authError) {
+      setError(authError instanceof Error ? authError.message : 'Autentikasi gagal. Coba lagi.')
+    } finally {
+      setAuthTransition(null)
     }
   }
 
   async function handleSignOut() {
-    const { error: signOutError } = await supabase.auth.signOut()
-    if (signOutError) setError('Gagal keluar. Coba lagi.')
-    else { setNotice('Anda telah keluar.'); setProfile(null); setUser(null); setSelectedTrip(null); setPage('discover') }
+    if (authTransition) return
+    setError('')
+    setAuthTransition('signout')
+    try {
+      const { error: signOutError } = await supabase.auth.signOut()
+      if (signOutError) setError('Gagal keluar. Coba lagi.')
+      else { setNotice('Anda telah keluar.'); setProfile(null); setUser(null); setSelectedTrip(null); setPage('discover') }
+    } catch {
+      setError('Gagal keluar. Periksa koneksi lalu coba lagi.')
+    } finally {
+      setAuthTransition(null)
+    }
   }
 
   async function saveProfile(event: FormEvent<HTMLFormElement>) {
@@ -643,13 +664,14 @@ function App() {
     onSignOut={handleSignOut}
   />
   const feedback = <Feedback error={error} notice={notice} onDismiss={() => { setError(''); setNotice('') }} />
-  const authModal = authOpen ? <AuthModal mode={authMode} setMode={setAuthMode} onClose={() => setAuthOpen(false)} onSubmit={handleAuth} /> : null
+  const authBusy = authTransition !== null
+  const authModal = authOpen ? <AuthModal mode={authMode} setMode={setAuthMode} onClose={() => setAuthOpen(false)} onSubmit={handleAuth} busy={authBusy} /> : null
   const protectedPagePending = ['bookings', 'organizer', 'admin', 'profile', 'trip-game'].includes(page)
     && (!authReady || Boolean(session && loadingProfile))
   const content = protectedPagePending
     ? <main className="content detail-page"><div className="empty-state">Memuat akun dan memeriksa akses…</div></main>
     : page === 'login'
-      ? <AuthModal mode={authMode} setMode={setAuthMode} onClose={() => navigate('/')} onSubmit={handleAuth} variant="page" />
+      ? <AuthModal mode={authMode} setMode={setAuthMode} onClose={() => navigate('/')} onSubmit={handleAuth} busy={authBusy} variant="page" />
       : selectedTrip
     ? <TripDetailsPage
         trip={selectedTrip}
@@ -721,6 +743,12 @@ function App() {
     {feedback}
     {authModal}
     {paymentBooking && <MockPaymentModal booking={paymentBooking} busy={payingBookingId === paymentBooking.id} onClose={() => setPaymentBooking(null)} onConfirm={() => void completeMockPayment(paymentBooking.id)} />}
+    {authTransition && <div className="auth-transition-backdrop" role="status" aria-live="polite" aria-atomic="true" aria-busy="true">
+      <div className="auth-transition-card">
+        <span className="auth-transition-spinner" aria-hidden="true" />
+        <span>{t(authTransition === 'signout' ? 'Sedang keluar…' : authTransition === 'signup' ? 'Sedang membuat akun…' : 'Sedang masuk ke akun…')}</span>
+      </div>
+    </div>}
   </div>
 }
 
